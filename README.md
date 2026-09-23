@@ -117,20 +117,6 @@ the real actor when the application supplied one, and only falling back to
 `initiated_by` field in the transfer form on the dashboard isn't cosmetic —
 it's the value that ends up correctly attributed in the audit trail.
 
-## What to demo to your faculty
-
-1. Open the dashboard and point out the accounts table, then submit a
-   transfer and watch the balance and "Recent activity" update live.
-2. Submit a transfer for more than an account holds — show the rejection
-   message and that the accounts table doesn't change.
-3. Open a terminal, run a raw `UPDATE Accounts SET balance = balance + 1
-   WHERE account_id = 1;` directly in a MySQL client, refresh the
-   dashboard, and show the new audit row appeared anyway — proving the
-   audit trail isn't something the website can be bypassed to avoid.
-4. Explain the `@app_actor` fix above if asked how attribution actually
-   works under the hood — it's a good, honest example of a real database
-   engine limitation and a real fix for it, not just a feature list.
-
 ## Known limitations
 
 - Single shared `bankapp` database credential for all web traffic — a
