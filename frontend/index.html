@@ -3,24 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ledger &mdash; Core Banking Dashboard</title>
+  <title>Aurelia Bank &mdash; Core Banking Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <header class="masthead">
-    <div class="masthead-inner">
-      <div class="brand">
-        <span class="brand-mark">§</span>
-        <span class="brand-name">Ledger</span>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-wrap sidebar-brand">
+        <div class="brand">
+          <span class="brand-mark">§</span>
+          <span class="brand-name">Aurelia</span>
+        </div>
       </div>
-      <div class="conn-status" id="connStatus">checking database&hellip;</div>
-    </div>
-  </header>
 
-  <main class="page">
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <a class="nav-item active" href="#overview-heading">Overview</a>
+        <a class="nav-item" href="#accounts-heading">Accounts</a>
+        <a class="nav-item" href="#customer-heading">Customers</a>
+        <a class="nav-item" href="#transfer-heading">Transfers</a>
+        <a class="nav-item" href="#audit-heading">Audit log</a>
+      </nav>
+
+      <div class="sidebar-card">
+        <span class="mini-label">System</span>
+        <strong>Protected</strong>
+        <small>Multi-layer checks enabled</small>
+      </div>
+    </aside>
+
+    <main class="page">
+      <header class="masthead">
+        <div class="masthead-inner">
+          <div>
+            <p class="eyebrow">Banking operations</p>
+            <h2 class="topbar-title">Operations desk</h2>
+          </div>
+          <div class="conn-status" id="connStatus">checking database&hellip;</div>
+        </div>
+      </header>
+
+    <section class="panel summary-panel" aria-labelledby="overview-heading">
+      <div class="hero-row">
+        <div>
+          <p class="eyebrow">Banking operations</p>
+          <h1 id="overview-heading">Secure core banking, simplified.</h1>
+        </div>
+        <div class="hero-status">
+          <span class="live-dot"></span>
+          <div>
+            <strong>Live system status</strong>
+            <small>Database integrity active</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-pills">
+        <span>Accounts</span>
+        <span>Transfers</span>
+        <span>Audit Trail</span>
+        <span>KYC</span>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card accent">
+          <span class="stat-label">Total balances</span>
+          <strong id="totalBalanceStat">$0.00</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Active accounts</span>
+          <strong id="activeAccountsStat">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Verified customers</span>
+          <strong id="verifiedCustomersStat">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Accounts tracked</span>
+          <strong id="accountCountStat">0</strong>
+        </article>
+      </div>
+
+      <div class="explain-grid">
+        <div class="explain-card">
+          <h3>Why this banking system matters</h3>
+          <p>It gives a bank a clean way to manage customer accounts, validate transfers, and keep records safe with automated controls.</p>
+        </div>
+        <div class="explain-card">
+          <h3>How transfer safety works</h3>
+          <p>Every money movement is processed by a database procedure so balance checks and rollback rules remain consistent and reliable.</p>
+        </div>
+        <div class="explain-card">
+          <h3>Why audit trails matter</h3>
+          <p>Every status or balance change is captured in an activity log, helping teams investigate changes and maintain trust.</p>
+        </div>
+      </div>
+
+      <div class="chart-layout">
+        <div class="chart-card">
+          <div class="panel-head compact">
+            <h2>Balance mix</h2>
+          </div>
+          <div id="balanceChart" class="balance-chart" aria-label="Account balance chart"></div>
+        </div>
+        <div class="chart-card">
+          <div class="panel-head compact">
+            <h2>Customer status</h2>
+          </div>
+          <div id="customerStatusBreakdown" class="status-breakdown"></div>
+        </div>
+      </div>
+    </section>
 
     <section class="panel" aria-labelledby="accounts-heading">
       <div class="panel-head">
@@ -47,6 +142,72 @@
     </section>
 
     <div class="two-col">
+
+      <section class="panel" aria-labelledby="customer-heading">
+        <div class="panel-head">
+          <h2 id="customer-heading">Onboard customer</h2>
+          <span class="panel-note">Create a new KYC record</span>
+        </div>
+        <form id="customerForm" class="ledger-form">
+          <label>
+            Full name
+            <input type="text" id="customerName" placeholder="Aisha Patel" required />
+          </label>
+          <div class="two-up">
+            <label>
+              Date of birth
+              <input type="date" id="customerDob" required />
+            </label>
+            <label>
+              National ID
+              <input type="text" id="customerNationalId" placeholder="NID-XXXXX" required />
+            </label>
+          </div>
+          <label>
+            Email
+            <input type="email" id="customerEmail" placeholder="name@example.com" required />
+          </label>
+          <div class="two-up">
+            <label>
+              Phone
+              <input type="tel" id="customerPhone" placeholder="+1 555 000 0000" />
+            </label>
+            <label>
+              Address
+              <input type="text" id="customerAddress" placeholder="Street, city" />
+            </label>
+          </div>
+          <button type="submit" id="customerSubmitBtn">Create customer</button>
+          <p class="form-status" id="customerStatus" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="customers-heading">
+        <div class="panel-head">
+          <h2 id="customers-heading">Customers</h2>
+          <span class="panel-note" id="customerCount"></span>
+        </div>
+        <div class="search-row">
+          <input id="customerSearch" type="search" placeholder="Search by name, email or ID" aria-label="Search customers" />
+        </div>
+        <ul id="customersList" class="customer-list">
+          <li class="empty">Loading customers&hellip;</li>
+        </ul>
+      </section>
+
+    </div>
+
+    <div class="two-col">
+
+      <section class="panel" aria-labelledby="customer-profile-heading">
+        <div class="panel-head">
+          <h2 id="customer-profile-heading">Secure customer profile</h2>
+          <span class="panel-note">Sensitive data is masked</span>
+        </div>
+        <div id="customerProfile" class="customer-profile">
+          <div class="empty">Select a customer to view secure profile details.</div>
+        </div>
+      </section>
 
       <section class="panel" aria-labelledby="transfer-heading">
         <div class="panel-head">
@@ -89,10 +250,11 @@
       </section>
 
     </div>
-  </main>
+    </main>
+  </div>
 
   <footer class="foot-note">
-    Every row in <span class="mono">Recent activity</span> was written automatically by an <span class="mono">AFTER UPDATE</span> trigger &mdash; nothing on this page calls a logging function.
+    <strong>Aurelia</strong> is a demo core banking experience designed to explain account management, secure transfers, and automatic audit tracking in one dashboard.
   </footer>
 
   <script src="app.js"></script>

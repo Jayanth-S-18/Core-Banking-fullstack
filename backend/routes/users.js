@@ -2,13 +2,74 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// GET /api/users - customer list for the dashboard's account-owner dropdowns
+const maskEmail = (email = '') => {
+  if (!email) return '—';
+  const [local, domain] = String(email).split('@');
+  if (!domain) return `${email.slice(0, 2)}***`;
+  return `${local.slice(0, 2)}***@${domain}`;
+};
+
+const maskPhone = (phone = '') => {
+  if (!phone) return '—';
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.length <= 4) return '***';
+  const visible = digits.slice(-4);
+  return `*** *** ${visible}`;
+};
+
+const maskNationalId = (nationalId = '') => {
+  if (!nationalId) return '—';
+  const value = String(nationalId);
+  return value.length > 4 ? `${value.slice(0, 2)}******${value.slice(-2)}` : `${value.slice(0, 1)}***`;
+};
+
+const maskUser = (row) => ({
+  ...row,
+  email: maskEmail(row.email),
+  phone: maskPhone(row.phone),
+  national_id: maskNationalId(row.national_id),
+  address: row.address ? `${row.address.slice(0, 2)}***` : '—',
+});
+
+// GET /api/users - customer directory for bank staff. Personal data is masked for safer display.
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT user_id, full_name, email, phone, kyc_status, created_at FROM Users ORDER BY user_id'
+    const { search } = req.query;
+    let sql = `
+      SELECT user_id, full_name, email, phone, national_id, address, kyc_status, created_at
+      FROM Users
+    `;
+    const params = [];
+
+    if (search) {
+      sql += ' WHERE full_name LIKE ? OR email LIKE ? OR national_id LIKE ?';
+      const term = `%${search}%`;
+      params.push(term, term, term);
+    }
+
+    sql += ' ORDER BY user_id';
+
+    const [rows] = await pool.query(sql, params);
+    res.json(rows.map(maskUser));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/users/:id - retrieve one customer profile with masked PII for safer access.
+router.get('/:id', async (req, res) => {
+  try {
+    const [[row]] = await pool.query(
+      `SELECT user_id, full_name, date_of_birth, national_id, email, phone, address, kyc_status, created_at
+       FROM Users WHERE user_id = ?`,
+      [req.params.id]
     );
-    res.json(rows);
+
+    if (!row) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    res.json(maskUser(row));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
