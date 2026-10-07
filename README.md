@@ -1,132 +1,184 @@
-# Core Banking System — Full-Stack Version
+# Aurelia Bank — Core Banking Fullstack Demo
 
-A working website on top of the same database from the SQL-only project:
-a Node.js/Express REST API backend and a static HTML/CSS/JS dashboard
-frontend, both served from one process. This was built and tested end to
-end against a live MariaDB instance before being handed over — every screen
-and endpoint described below was actually exercised, not just written.
+A modern full-stack banking dashboard built with Node.js, Express, MariaDB, and plain HTML/CSS/JavaScript. This project simulates a real banking operations workspace with customer onboarding, account overview, secure data masking, money transfers, and audit tracking.
 
-```
-core-banking-fullstack/
-├── sql/                        same 4 files as the SQL-only project
+## Overview
+
+This app is designed to feel like a real bank admin dashboard for a small digital banking environment. It includes:
+
+- customer management and onboarding
+- secure masked personal details
+- account and balance monitoring
+- internal transfer processing
+- audit log tracking for transfer activity
+- polished dark banking-style dashboard UI
+
+## Tech Stack
+
+- Backend: Node.js + Express
+- Database: MariaDB / MySQL
+- Query layer: mysql2
+- Frontend: HTML, CSS, JavaScript
+- Business logic: SQL stored procedures and triggers
+
+## Project Structure
+
+```text
+Core-Banking-fullstack/
+├── backend/
+│   ├── db.js
+│   ├── package.json
+│   ├── server.js
+│   └── routes/
+│       ├── accounts.js
+│       ├── audit.js
+│       ├── transfer.js
+│       └── users.js
+├── frontend/
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
+├── sql/
 │   ├── 01_schema.sql
 │   ├── 02_triggers.sql
 │   ├── 03_transfer_procedure.sql
 │   └── 04_demo.sql
-├── backend/
-│   ├── server.js               Express app entry point
-│   ├── db.js                   mysql2 connection pool
-│   ├── routes/
-│   │   ├── accounts.js         GET /api/accounts, GET /api/accounts/:id
-│   │   ├── transfer.js         POST /api/transfer  (calls sp_transfer_funds)
-│   │   ├── audit.js            GET /api/audit-logs
-│   │   └── users.js            GET/POST /api/users
-│   ├── package.json
-│   └── .env.example
-└── frontend/
-    ├── index.html               the dashboard
-    ├── styles.css
-    └── app.js                   fetch() calls to the API above
+├── README.md
+└── .gitignore
 ```
 
-The frontend is plain HTML/CSS/JS with no build step and no framework —
-Express just serves it as static files from the same port as the API, so
-there's nothing to compile and only one process to run.
+## Features
 
-## How the frontend and backend fit together
+### Banking dashboard
+- overview cards for total balances, active accounts, customer counts
+- responsiveness for desktop and smaller screens
+- premium fintech style dark theme
 
-- **Accounts table** — `GET /api/accounts` joins Accounts, Users, and
-  Branches and renders as a ledger-style table. Refreshes every 8 seconds
-  and immediately after a transfer.
-- **Move money form** — submits to `POST /api/transfer`, which does *no*
-  balance math itself; it just calls `sp_transfer_funds` and relays back
-  whatever the database decided (`Success: transfer completed` or a
-  specific rejection reason like `Rejected: insufficient funds`). All the
-  ACID guarantees from the SQL-only project apply unchanged — the API layer
-  is a thin pass-through, not a second place where bugs can creep in.
-- **Recent activity feed** — `GET /api/audit-logs` reads straight from
-  `Audit_Logs`, populated entirely by the triggers. Nothing in the frontend
-  or backend ever writes to this table directly.
+### Customer management
+- add new customers
+- search customers by name or key terms
+- view customer detail cards
+- mask sensitive information such as phone, email, national ID, and address
 
-## Setup
+### Transfers
+- transfer funds between accounts
+- validation handled in SQL stored procedure
+- ledger-like updates and audit trail creation
 
-### 1. Database
+### Audit logging
+- database triggers record money movement and updates
+- recent activity can be displayed in the dashboard
 
-Run the four files from `sql/` in order against a MySQL 8.0+ / MariaDB
-10.5+ server, exactly as in the SQL-only project:
+## Database Setup
+
+### Option 1: using Docker (recommended)
+
+```bash
+cd /workspaces/Core-Banking-fullstack
+
+docker run --name corebank-db \
+  -e MYSQL_ROOT_PASSWORD=rootpass \
+  -e MYSQL_DATABASE=core_banking \
+  -p 3306:3306 \
+  -d mariadb:11
+
+docker cp ./sql corebank-db:/tmp/
+
+docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/01_schema.sql"
+docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/02_triggers.sql"
+docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/03_transfer_procedure.sql"
+docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/04_demo.sql"
+```
+
+### Option 2: local MariaDB/MySQL
+
+Run the SQL files in order:
 
 ```bash
 mysql -u root -p < sql/01_schema.sql
 mysql -u root -p < sql/02_triggers.sql
 mysql -u root -p < sql/03_transfer_procedure.sql
-mysql -u root -p < sql/04_demo.sql     # optional - seeds two demo accounts
+mysql -u root -p < sql/04_demo.sql
 ```
 
-Then create a dedicated application user rather than pointing the app at
-`root` (this is what was actually tested):
+## Backend Setup
 
-```sql
-CREATE USER 'bankapp'@'%' IDENTIFIED BY 'choose_a_password';
-GRANT ALL PRIVILEGES ON core_banking.* TO 'bankapp'@'%';
-FLUSH PRIVILEGES;
+Create a `.env` file inside the `backend` folder:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=rootpass
+DB_NAME=core_banking
+PORT=4000
 ```
 
-### 2. Backend
+Then run:
 
 ```bash
-cd backend
+cd /workspaces/Core-Banking-fullstack/backend
 npm install
-cp .env.example .env
-# edit .env: set DB_USER=bankapp and DB_PASSWORD to what you chose above
 npm start
 ```
 
 You should see:
-```
+
+```text
 Core banking API + dashboard running at http://localhost:4000
 ```
 
-### 3. Open it
+## Open the App
 
-Visit **http://localhost:4000** — the dashboard, the API, and the database
-are now all connected. Try a transfer between the two seeded accounts and
-watch the "Recent activity" panel update with the audit rows the triggers
-just wrote.
+Open this in your browser:
 
-If `http://localhost:4000/api/health` doesn't return
-`{"status":"ok","database":"connected"}`, the backend can't reach MySQL —
-check `.env` first.
+```text
+http://localhost:4000
+```
 
-## A real bug this project surfaced, and how it's fixed
+## API Endpoints
 
-While testing this, a genuine MySQL/MariaDB limitation showed up: a
-**trigger always executes with the identity of whoever created it**, so
-`CURRENT_USER()` inside a trigger body reports the trigger's *definer*, not
-the session that actually fired the `UPDATE` — confirmed directly, by
-connecting as the `bankapp` user and watching `Audit_Logs.changed_by` still
-say `root@localhost`. Left as-is, every transfer made through this website
-would have shown up in the audit trail under the wrong name, which is
-exactly the failure mode an audit trail exists to prevent.
+### Health
+- `GET /api/health`
 
-The fix, already applied in `sql/02_triggers.sql` and
-`sql/03_transfer_procedure.sql`: `sp_transfer_funds` sets a session
-variable, `SET @app_actor = p_initiated_by`, right before it touches any
-rows, and the triggers log `COALESCE(@app_actor, CURRENT_USER())` — using
-the real actor when the application supplied one, and only falling back to
-`CURRENT_USER()` (the trigger's definer) when nothing did. This is why the
-`initiated_by` field in the transfer form on the dashboard isn't cosmetic —
-it's the value that ends up correctly attributed in the audit trail.
+### Accounts
+- `GET /api/accounts`
 
-## Known limitations
+### Users
+- `GET /api/users`
+- `GET /api/users/:id`
+- `POST /api/users`
 
-- Single shared `bankapp` database credential for all web traffic — a
-  production system would use per-session application-level auth (e.g. a
-  `Login`/session table) rather than trusting a client-supplied
-  `initiated_by` string, which anyone calling the API directly could set to
-  anything. That's out of scope here; the point of this layer is to show
-  the database mechanics working through a real HTTP interface, not to
-  implement bank-grade authentication.
-- No HTTPS/TLS setup — fine for local coursework demonstration, required
-  before this would touch real data.
-- The dashboard polls every 8 seconds rather than using WebSockets/SSE for
-  live updates; simpler to run and to explain, at the cost of a small delay.
+### Transfers
+- `POST /api/transfer`
+
+### Audit logs
+- `GET /api/audit-logs`
+
+## Security Notes
+
+This project intentionally masks sensitive customer data such as:
+- email
+- phone number
+- national ID
+- address fragments
+
+This makes the demo safer and more realistic for an operations or admin dashboard without exposing full personal details in the UI.
+
+## Important Design Note
+
+The money-transfer logic is enforced in the database via SQL stored procedures rather than only in JavaScript. This mirrors real banking systems better because deposits, withdrawals, and validation happen in a single trusted place, ensuring consistent logic and stronger transactional safety.
+
+## Future Improvements
+
+Possible upgrades for production-like readiness:
+- secure login and admin authentication
+- account creation and closure workflows
+- role-based access control
+- customer edit/delete features
+- stronger reporting and analytics
+- HTTPS and production deployment setup
+
+## License
+
+This project is intended for educational and demo use.
