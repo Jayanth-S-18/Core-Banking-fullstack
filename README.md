@@ -1,184 +1,125 @@
-# Aurelia Bank — Core Banking Fullstack Demo
+# 🏦 Core Banking System: Full-Stack Learning Project
 
-A modern full-stack banking dashboard built with Node.js, Express, MariaDB, and plain HTML/CSS/JavaScript. This project simulates a real banking operations workspace with customer onboarding, account overview, secure data masking, money transfers, and audit tracking.
+A complete mini core-banking system: **MySQL/MariaDB** (all the money rules) + **Node.js/Express** REST API + a **dashboard frontend** that explains itself and shows a pop-up message for every click and action.
 
-## Overview
+## 1. What is this project?
+"Core banking" is the central software a bank runs on. Every ATM withdrawal, UPI payment, net-banking transfer or branch deposit becomes an operation on it: *check the balance → move the money → record what happened.*
+This project implements the essentials:
 
-This app is designed to feel like a real bank admin dashboard for a small digital banking environment. It includes:
+| Feature | Where it lives |
+|---|---|
+| Customers (KYC, PAN, address), branches, accounts | `Users`, `Branches`, `Accounts` tables |
+| Deposit / Withdraw / Transfer | stored procedures `sp_deposit`, `sp_withdraw`, `sp_transfer_funds` |
+| Automatic audit trail | trigger `trg_audit_balance` → `Audit_Logs` |
+| Rejections (insufficient funds, frozen account, negative amount) | procedure checks + `CHECK` constraints |
+| Reporting | views `v_account_overview`, `v_branch_summary` (uses `RANK()` window function) |
+| Dashboard with toast messages | `frontend/` |
 
-- customer management and onboarding
-- secure masked personal details
-- account and balance monitoring
-- internal transfer processing
-- audit log tracking for transfer activity
-- polished dark banking-style dashboard UI
+## 2. Why does it exist? (the core idea)
+Money must **never** be created, lost or double-spent, even if the server crashes mid-transfer or two people pay at once. So the rules live **inside the database**, not in app code:
 
-## Tech Stack
+* **Atomicity**: a transfer debits *and* credits, or does nothing (`START TRANSACTION … COMMIT / ROLLBACK`).
+* **Consistency**: `CHECK (balance >= 0)`, foreign keys and `ENUM`s make invalid data impossible.
+* **Isolation**: `SELECT … FOR UPDATE` locks rows so parallel transfers can't overdraw an account.
+* **Durability**: committed data survives crashes.
+* **Auditability**: a trigger logs every balance change; the app cannot forget or tamper with it.
 
-- Backend: Node.js + Express
-- Database: MariaDB / MySQL
-- Query layer: mysql2
-- Frontend: HTML, CSS, JavaScript
-- Business logic: SQL stored procedures and triggers
+## 3. Where is this used in real life?
+Banks and NBFCs (Finacle, Flexcube, TCS BaNCS), wallets and payment apps (Paytm, PhonePe, Google Pay back-ends), brokerages, insurance premium systems, and any app that holds balances: game credits, ride-share wallets, loyalty points.
 
-## Project Structure
+## 4. How it works (one transfer)
+```
+Browser form ─► POST /api/transfer ─► sp_transfer_funds (MySQL)
+                                        ├─ validates amount, accounts, status
+                                        ├─ locks both rows (FOR UPDATE)
+                                        ├─ checks balance, debits, credits
+                                        ├─ inserts Transactions row, COMMIT
+                                        └─ trigger writes Audit_Logs
+◄── "Success: transferred 5,000.00 successfully" (shown as a toast)
+```
+The API does **no money math**; it only relays what the database decided.
 
-```text
-Core-Banking-fullstack/
-├── backend/
-│   ├── db.js
-│   ├── package.json
-│   ├── server.js
-│   └── routes/
-│       ├── accounts.js
-│       ├── audit.js
-│       ├── transfer.js
-│       └── users.js
-├── frontend/
-│   ├── app.js
-│   ├── index.html
-│   └── styles.css
-├── sql/
-│   ├── 01_schema.sql
-│   ├── 02_triggers.sql
-│   ├── 03_transfer_procedure.sql
-│   └── 04_demo.sql
-├── README.md
-└── .gitignore
+## 5. Project structure
+```
+core-banking/
+├── sql/01_schema.sql   tables, constraints, indexes
+├── sql/02_logic.sql    trigger, 3 stored procedures, 2 views
+├── sql/03_seed.sql     4 branches, 6 customers, 9 accounts, history
+├── backend/            Express API (server.js, db.js)
+└── frontend/           index.html, styles.css, app.js (no build step)
 ```
 
-## Features
+## 6. Run it (terminal commands)
+**Requirements:** Node.js 18+ and MySQL 8+ or MariaDB 10.5+.
 
-### Banking dashboard
-- overview cards for total balances, active accounts, customer counts
-- responsiveness for desktop and smaller screens
-- premium fintech style dark theme
-
-### Customer management
-- add new customers
-- search customers by name or key terms
-- view customer detail cards
-- mask sensitive information such as phone, email, national ID, and address
-
-### Transfers
-- transfer funds between accounts
-- validation handled in SQL stored procedure
-- ledger-like updates and audit trail creation
-
-### Audit logging
-- database triggers record money movement and updates
-- recent activity can be displayed in the dashboard
-
-## Database Setup
-
-### Option 1: using Docker (recommended)
-
+### Option A: you already have MySQL/MariaDB
 ```bash
-cd /workspaces/Core-Banking-fullstack
+git clone https://github.com/Jayanth-S-18/Core-Banking-fullstack.git
+cd Core-Banking-fullstack          # or the unzipped core-banking folder
 
-docker run --name corebank-db \
-  -e MYSQL_ROOT_PASSWORD=rootpass \
-  -e MYSQL_DATABASE=core_banking \
-  -p 3306:3306 \
-  -d mariadb:11
-
-docker cp ./sql corebank-db:/tmp/
-
-docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/01_schema.sql"
-docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/02_triggers.sql"
-docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/03_transfer_procedure.sql"
-docker exec -i corebank-db bash -lc "mariadb -uroot -prootpass < /tmp/sql/04_demo.sql"
-```
-
-### Option 2: local MariaDB/MySQL
-
-Run the SQL files in order:
-
-```bash
+# 1) Create database, logic and demo data
 mysql -u root -p < sql/01_schema.sql
-mysql -u root -p < sql/02_triggers.sql
-mysql -u root -p < sql/03_transfer_procedure.sql
-mysql -u root -p < sql/04_demo.sql
-```
+mysql -u root -p < sql/02_logic.sql
+mysql -u root -p < sql/03_seed.sql
 
-## Backend Setup
+# 2) Create a dedicated app user
+mysql -u root -p -e "CREATE USER 'bankapp'@'%' IDENTIFIED BY 'choose_a_password'; GRANT ALL PRIVILEGES ON core_banking.* TO 'bankapp'@'%'; FLUSH PRIVILEGES;"
 
-Create a `.env` file inside the `backend` folder:
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=rootpass
-DB_NAME=core_banking
-PORT=4000
-```
-
-Then run:
-
-```bash
-cd /workspaces/Core-Banking-fullstack/backend
+# 3) Start the backend (it also serves the dashboard)
+cd backend
 npm install
+cp .env.example .env               # Windows: copy .env.example .env
+# edit .env -> DB_USER=bankapp, DB_PASSWORD=choose_a_password
 npm start
 ```
 
-You should see:
-
-```text
-Core banking API + dashboard running at http://localhost:4000
+### Option B: no MySQL installed (Docker)
+```bash
+docker run --name bankdb -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 -d mariadb:10.11
+# wait ~15 seconds, then:
+docker exec -i bankdb mariadb -uroot -proot < sql/01_schema.sql
+docker exec -i bankdb mariadb -uroot -proot < sql/02_logic.sql
+docker exec -i bankdb mariadb -uroot -proot < sql/03_seed.sql
+cd backend && npm install && cp .env.example .env
+# in .env set: DB_USER=root  DB_PASSWORD=root
+npm start
 ```
 
-## Open the App
+Open **http://localhost:4000**. Health check: `curl http://localhost:4000/api/health` → `{"status":"ok","database":"connected"}`.
 
-Open this in your browser:
+## 7. Demo data
+| Customer | Accounts | Notes |
+|---|---|---|
+| Aarav Sharma (Bengaluru) | CB1001001 savings, CB1001002 current | |
+| Priya Nair (Chennai) | CB1002001 salary | |
+| Rohan Mehta (Mumbai) | CB1003001 savings, CB1003002 current | largest balances |
+| Ananya Iyer (Chennai) | CB1004001 savings | low balance: good for "insufficient funds" tests |
+| Vikram Singh (Delhi) | CB1005001 savings, CB1005002 salary | |
+| Meera Reddy (Hyderabad) | CB1006001 savings | **FROZEN**, KYC pending: transactions are rejected |
 
-```text
-http://localhost:4000
-```
+## 8. Things to try
+1. Transfer ₹5,000 CB1001002 → CB1002001, then open **Audit trail**: two balance rows were logged by the trigger.
+2. Withdraw ₹10,00,000 from CB1004001: *Rejected: insufficient funds* (and a FAILED row appears in History).
+3. Deposit to the frozen account CB1006001: *Rejected: account not found or FROZEN*.
+4. Onboard a new customer under **Accounts**: user, account and opening deposit are created in one DB transaction.
+5. Try SQL directly: `SELECT * FROM v_branch_summary;`
 
-## API Endpoints
+## 9. API reference
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/health` | DB connectivity |
+| GET | `/api/accounts`, `/api/accounts/:id` | accounts with customer and branch |
+| GET | `/api/users` | customers |
+| POST | `/api/users` | onboard customer + account |
+| POST | `/api/deposit` `{account, amount, initiated_by}` | deposit |
+| POST | `/api/withdraw` `{account, amount, initiated_by}` | withdraw |
+| POST | `/api/transfer` `{from_account, to_account, amount, initiated_by}` | transfer |
+| GET | `/api/transactions`, `/api/audit-logs`, `/api/stats` | history, audit, dashboard numbers |
 
-### Health
-- `GET /api/health`
+## 10. Design notes
+* **`@app_actor` fix**: inside a trigger `CURRENT_USER()` is the trigger's definer, so procedures set `@app_actor` and the trigger logs `COALESCE(@app_actor, CURRENT_USER())`, which keeps the audit trail attributed correctly.
+* **Deadlock-safe transfer**: both rows are locked in one statement, so opposite transfers can't lock each other.
+* **Parameterised queries** everywhere (no SQL injection); the frontend escapes all output (no XSS).
 
-### Accounts
-- `GET /api/accounts`
-
-### Users
-- `GET /api/users`
-- `GET /api/users/:id`
-- `POST /api/users`
-
-### Transfers
-- `POST /api/transfer`
-
-### Audit logs
-- `GET /api/audit-logs`
-
-## Security Notes
-
-This project intentionally masks sensitive customer data such as:
-- email
-- phone number
-- national ID
-- address fragments
-
-This makes the demo safer and more realistic for an operations or admin dashboard without exposing full personal details in the UI.
-
-## Important Design Note
-
-The money-transfer logic is enforced in the database via SQL stored procedures rather than only in JavaScript. This mirrors real banking systems better because deposits, withdrawals, and validation happen in a single trusted place, ensuring consistent logic and stronger transactional safety.
-
-## Future Improvements
-
-Possible upgrades for production-like readiness:
-- secure login and admin authentication
-- account creation and closure workflows
-- role-based access control
-- customer edit/delete features
-- stronger reporting and analytics
-- HTTPS and production deployment setup
-
-## License
-
-This project is intended for educational and demo use.
+## 11. Known limitations / next steps
+No login: `initiated_by` is client-supplied (add JWT auth + roles); no HTTPS; polling instead of WebSockets; no interest, loans or cards yet. Good extensions: loans with EMI schedules, scheduled interest via `EVENT`, JWT login, Docker Compose, automated tests.

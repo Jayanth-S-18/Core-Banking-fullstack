@@ -1,262 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aurelia Bank &mdash; Core Banking Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand-wrap sidebar-brand">
-        <div class="brand">
-          <span class="brand-mark">§</span>
-          <span class="brand-name">Aurelia</span>
-        </div>
-      </div>
-
-      <nav class="sidebar-nav" aria-label="Main navigation">
-        <a class="nav-item active" href="#overview-heading">Overview</a>
-        <a class="nav-item" href="#accounts-heading">Accounts</a>
-        <a class="nav-item" href="#customer-heading">Customers</a>
-        <a class="nav-item" href="#transfer-heading">Transfers</a>
-        <a class="nav-item" href="#audit-heading">Audit log</a>
-      </nav>
-
-      <div class="sidebar-card">
-        <span class="mini-label">System</span>
-        <strong>Protected</strong>
-        <small>Multi-layer checks enabled</small>
-      </div>
-    </aside>
-
-    <main class="page">
-      <header class="masthead">
-        <div class="masthead-inner">
-          <div>
-            <p class="eyebrow">Banking operations</p>
-            <h2 class="topbar-title">Operations desk</h2>
-          </div>
-          <div class="conn-status" id="connStatus">checking database&hellip;</div>
-        </div>
-      </header>
-
-    <section class="panel summary-panel" aria-labelledby="overview-heading">
-      <div class="hero-row">
-        <div>
-          <p class="eyebrow">Banking operations</p>
-          <h1 id="overview-heading">Secure core banking, simplified.</h1>
-        </div>
-        <div class="hero-status">
-          <span class="live-dot"></span>
-          <div>
-            <strong>Live system status</strong>
-            <small>Database integrity active</small>
-          </div>
-        </div>
-      </div>
-
-      <div class="feature-pills">
-        <span>Accounts</span>
-        <span>Transfers</span>
-        <span>Audit Trail</span>
-        <span>KYC</span>
-      </div>
-
-      <div class="stats-grid">
-        <article class="stat-card accent">
-          <span class="stat-label">Total balances</span>
-          <strong id="totalBalanceStat">$0.00</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Active accounts</span>
-          <strong id="activeAccountsStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Verified customers</span>
-          <strong id="verifiedCustomersStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Accounts tracked</span>
-          <strong id="accountCountStat">0</strong>
-        </article>
-      </div>
-
-      <div class="explain-grid">
-        <div class="explain-card">
-          <h3>Why this banking system matters</h3>
-          <p>It gives a bank a clean way to manage customer accounts, validate transfers, and keep records safe with automated controls.</p>
-        </div>
-        <div class="explain-card">
-          <h3>How transfer safety works</h3>
-          <p>Every money movement is processed by a database procedure so balance checks and rollback rules remain consistent and reliable.</p>
-        </div>
-        <div class="explain-card">
-          <h3>Why audit trails matter</h3>
-          <p>Every status or balance change is captured in an activity log, helping teams investigate changes and maintain trust.</p>
-        </div>
-      </div>
-
-      <div class="chart-layout">
-        <div class="chart-card">
-          <div class="panel-head compact">
-            <h2>Balance mix</h2>
-          </div>
-          <div id="balanceChart" class="balance-chart" aria-label="Account balance chart"></div>
-        </div>
-        <div class="chart-card">
-          <div class="panel-head compact">
-            <h2>Customer status</h2>
-          </div>
-          <div id="customerStatusBreakdown" class="status-breakdown"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="accounts-heading">
-      <div class="panel-head">
-        <h1 id="accounts-heading">Accounts</h1>
-        <span class="panel-note" id="accountCount"></span>
-      </div>
-      <div class="table-scroll">
-        <table class="ledger-table" id="accountsTable">
-          <thead>
-            <tr>
-              <th>Account</th>
-              <th>Holder</th>
-              <th>Type</th>
-              <th>Branch</th>
-              <th class="num">Balance</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="accountsBody">
-            <tr><td colspan="6" class="empty">Loading accounts&hellip;</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <div class="two-col">
-
-      <section class="panel" aria-labelledby="customer-heading">
-        <div class="panel-head">
-          <h2 id="customer-heading">Onboard customer</h2>
-          <span class="panel-note">Create a new KYC record</span>
-        </div>
-        <form id="customerForm" class="ledger-form">
-          <label>
-            Full name
-            <input type="text" id="customerName" placeholder="Aisha Patel" required />
-          </label>
-          <div class="two-up">
-            <label>
-              Date of birth
-              <input type="date" id="customerDob" required />
-            </label>
-            <label>
-              National ID
-              <input type="text" id="customerNationalId" placeholder="NID-XXXXX" required />
-            </label>
-          </div>
-          <label>
-            Email
-            <input type="email" id="customerEmail" placeholder="name@example.com" required />
-          </label>
-          <div class="two-up">
-            <label>
-              Phone
-              <input type="tel" id="customerPhone" placeholder="+1 555 000 0000" />
-            </label>
-            <label>
-              Address
-              <input type="text" id="customerAddress" placeholder="Street, city" />
-            </label>
-          </div>
-          <button type="submit" id="customerSubmitBtn">Create customer</button>
-          <p class="form-status" id="customerStatus" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-
-      <section class="panel" aria-labelledby="customers-heading">
-        <div class="panel-head">
-          <h2 id="customers-heading">Customers</h2>
-          <span class="panel-note" id="customerCount"></span>
-        </div>
-        <div class="search-row">
-          <input id="customerSearch" type="search" placeholder="Search by name, email or ID" aria-label="Search customers" />
-        </div>
-        <ul id="customersList" class="customer-list">
-          <li class="empty">Loading customers&hellip;</li>
-        </ul>
-      </section>
-
-    </div>
-
-    <div class="two-col">
-
-      <section class="panel" aria-labelledby="customer-profile-heading">
-        <div class="panel-head">
-          <h2 id="customer-profile-heading">Secure customer profile</h2>
-          <span class="panel-note">Sensitive data is masked</span>
-        </div>
-        <div id="customerProfile" class="customer-profile">
-          <div class="empty">Select a customer to view secure profile details.</div>
-        </div>
-      </section>
-
-      <section class="panel" aria-labelledby="transfer-heading">
-        <div class="panel-head">
-          <h2 id="transfer-heading">Move money</h2>
-        </div>
-        <form id="transferForm" class="ledger-form">
-          <label>
-            From account
-            <select id="fromAccount" required></select>
-          </label>
-          <label>
-            To account
-            <select id="toAccount" required></select>
-          </label>
-          <label>
-            Amount
-            <input type="number" id="amount" min="0.01" step="0.01" placeholder="0.00" required />
-          </label>
-          <label>
-            Reference note
-            <input type="text" id="reference" placeholder="e.g. rent, invoice #4021" required />
-          </label>
-          <label>
-            Initiated by
-            <input type="text" id="initiatedBy" value="dashboard_user" required />
-          </label>
-          <button type="submit" id="submitBtn">Send transfer</button>
-          <p class="form-status" id="transferStatus" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-
-      <section class="panel" aria-labelledby="audit-heading">
-        <div class="panel-head">
-          <h2 id="audit-heading">Recent activity</h2>
-          <span class="panel-note">from Audit_Logs, written by the database triggers</span>
-        </div>
-        <ol class="audit-feed" id="auditFeed">
-          <li class="empty">Loading activity&hellip;</li>
-        </ol>
-      </section>
-
-    </div>
-    </main>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Core Banking Dashboard</title><link rel="stylesheet" href="styles.css">
+</head><body>
+<aside>
+  <div class="brand">🏦 <b>CoreBank</b><small>Learning Edition</small></div>
+  <nav>
+    <button data-page="overview" class="on">📊 Overview</button>
+    <button data-page="about">📘 What is this?</button>
+    <button data-page="accounts">👥 Accounts</button>
+    <button data-page="transact">💸 Transactions</button>
+    <button data-page="history">🧾 History</button>
+    <button data-page="audit">🔍 Audit trail</button>
+  </nav>
+  <div id="health" class="health">Checking server…</div>
+</aside>
+<main>
+<section id="overview" class="page on">
+  <h1>Bank Overview</h1><p class="sub">Live numbers straight from the MySQL database. Auto-refreshes every 8s.</p>
+  <div class="cards" id="cards"></div>
+  <div class="grid2">
+    <div class="panel"><h3>Money held per branch</h3><div id="branchBars"></div></div>
+    <div class="panel"><h3>Latest activity</h3><div id="latest"></div></div>
   </div>
+</section>
 
-  <footer class="foot-note">
-    <strong>Aurelia</strong> is a demo core banking experience designed to explain account management, secure transfers, and automatic audit tracking in one dashboard.
-  </footer>
+<section id="about" class="page">
+  <h1>What is this project?</h1>
+  <p class="sub">A mini <b>core banking system</b>: the engine that keeps customer accounts, balances and transactions correct.</p>
+  <div class="grid2">
+    <div class="panel"><h3>🏦 What is core banking?</h3><p>“Core banking” is the central software a bank runs on. Every ATM withdrawal, UPI payment, net-banking transfer or branch deposit ends up as an operation on this core: <i>check the balance, move the money, record it</i>. Real systems (Finacle, Flexcube, TCS BaNCS) work on the same ideas as this project.</p></div>
+    <div class="panel"><h3>🎯 Why does it matter?</h3><p>Money must <b>never</b> be created, lost or double-spent, even if the server crashes mid-transfer or two people pay at the same moment. This project shows how a database guarantees that using transactions, locks, constraints and triggers.</p></div>
+    <div class="panel"><h3>🌍 Where is it used?</h3><p>Banks, NBFCs, credit unions, wallets (Paytm, PhonePe), payment gateways, brokerages and any app holding balances: gaming credits, ride wallets, loyalty points.</p></div>
+    <div class="panel"><h3>🧪 Try it in 60 seconds</h3><ol><li>Go to <b>Transactions</b>, move ₹5,000 from CB1001002 to CB1002001.</li><li>Open <b>Audit trail</b>: two balance rows were logged by a trigger.</li><li>Try withdrawing ₹10,00,000: the database rejects it.</li><li>Try the FROZEN account CB1006001: rejected too.</li></ol></div>
+  </div>
+  <div class="panel"><h3>⚙️ How a transfer flows</h3>
+    <div class="flow"><span>Browser form</span>→<span>Express API<br><small>POST /api/transfer</small></span>→<span>sp_transfer_funds<br><small>stored procedure</small></span>→<span>Accounts updated<br><small>row locks + COMMIT</small></span>→<span>Trigger writes<br><small>Audit_Logs</small></span></div>
+    <p class="sub">The API does <b>no</b> money maths. All rules live in the database, so no client can bypass them.</p></div>
+  <div class="panel"><h3>🗄️ SQL concepts demonstrated</h3>
+    <div class="tags"><span>PRIMARY / FOREIGN KEYS</span><span>CHECK (balance ≥ 0)</span><span>ACID transactions</span><span>SELECT … FOR UPDATE</span><span>Stored procedures</span><span>Triggers</span><span>Views</span><span>JOINs</span><span>Window function RANK()</span><span>Indexes</span><span>ENUM types</span></div>
+    <p><b>ACID</b>: <b>A</b>tomic (all or nothing) · <b>C</b>onsistent (rules always hold) · <b>I</b>solated (parallel users don’t clash) · <b>D</b>urable (committed data survives crashes).</p></div>
+</section>
 
-  <script src="app.js"></script>
-</body>
-</html>
+<section id="accounts" class="page">
+  <h1>Customers &amp; Accounts</h1><p class="sub">Click any row to see full customer details.</p>
+  <div class="panel tbl"><table><thead><tr><th>Account</th><th>Customer</th><th>Branch</th><th>Type</th><th>Status</th><th class="r">Balance</th></tr></thead><tbody id="accRows"></tbody></table></div>
+  <div class="panel"><h3>➕ Onboard new customer</h3>
+    <form id="newUser" class="form row">
+      <input name="full_name" placeholder="Full name" required><input name="email" type="email" placeholder="Email" required>
+      <input name="phone" placeholder="Phone" required><select name="branch_id" id="branchSel"></select>
+      <select name="type"><option>SAVINGS</option><option>CURRENT</option><option>SALARY</option></select>
+      <input name="opening_deposit" type="number" min="0" step="0.01" placeholder="Opening deposit ₹">
+      <button class="btn">Create account</button></form></div>
+</section>
+
+<section id="transact" class="page">
+  <h1>Move Money</h1><p class="sub">Every submit runs a stored procedure and shows what the database decided.</p>
+  <div class="panel"><div class="tabs" id="tabs"><button data-t="deposit" class="on">Deposit</button><button data-t="withdraw">Withdraw</button><button data-t="transfer">Transfer</button></div>
+    <form id="txForm" class="form">
+      <label><span id="fromLbl">Account</span><select name="account" id="selA"></select></label>
+      <label id="toWrap" hidden>To account<select name="to_account" id="selB"></select></label>
+      <label>Amount (₹)<input name="amount" type="number" min="0.01" step="0.01" required placeholder="e.g. 5000"></label>
+      <label>Initiated by<input name="initiated_by" value="Teller-Demo"></label>
+      <button class="btn" id="txBtn">Deposit money</button></form>
+    <p class="sub">The “Initiated by” name is saved in the audit trail (see README: the @app_actor fix).</p></div>
+</section>
+
+<section id="history" class="page"><h1>Transaction History</h1><p class="sub">Latest 50 transactions, including failed attempts.</p>
+  <div class="panel tbl"><table><thead><tr><th>#</th><th>Type</th><th>From</th><th>To</th><th class="r">Amount</th><th>Status</th><th>By</th><th>When</th></tr></thead><tbody id="txRows"></tbody></table></div></section>
+
+<section id="audit" class="page"><h1>Audit Trail</h1><p class="sub">Written automatically by a database <b>trigger</b>. The app can never forget to log, or edit, a change.</p>
+  <div class="panel tbl"><table><thead><tr><th>#</th><th>Account</th><th class="r">Old</th><th class="r">New</th><th>Changed by</th><th>When</th></tr></thead><tbody id="auRows"></tbody></table></div></section>
+</main>
+
+<div id="modal" class="modal" hidden><div class="box"><button class="x" id="mx">✕</button><div id="mBody"></div></div></div>
+<div id="toasts"></div>
+<script src="app.js"></script>
+</body></html>

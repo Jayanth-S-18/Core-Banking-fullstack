@@ -1,365 +1,87 @@
-const API = ''; // same origin - Express serves this file and the API together
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const inr = n => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const when = d => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+let accounts = [], txType = 'deposit';
 
-const fmtMoney = (n, ccy) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: ccy || 'USD' }).format(Number(n || 0));
-
-const maskEmail = (value = '') => {
-  if (!value) return '—';
-  const [local, domain] = String(value).split('@');
-  if (!domain) return `${value.slice(0, 2)}***`;
-  return `${local.slice(0, 2)}***@${domain}`;
-};
-
-const maskPhone = (value = '') => {
-  if (!value) return '—';
-  const digits = String(value).replace(/\D/g, '');
-  if (digits.length <= 4) return '***';
-  return `*** *** ${digits.slice(-4)}`;
-};
-
-const fmtTime = (iso) => {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-};
-
-const slugify = (value = '') => value.toLowerCase().replace(/\s+/g, '-');
-
-function setStatusText(el, message, type) {
-  el.textContent = message;
-  el.className = type ? `form-status ${type}` : 'form-status';
+function toast(msg, type = 'info') {
+  const t = document.createElement('div'); t.className = 'toast ' + type;
+  t.textContent = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+  $('#toasts').append(t); setTimeout(() => t.remove(), 4500);
 }
-
-async function checkHealth() {
-  const el = document.getElementById('connStatus');
+async function api(path, body) {
   try {
-    const res = await fetch(`${API}/api/health`);
-    const data = await res.json();
-    if (data.status === 'ok') {
-      el.textContent = 'database connected';
-      el.className = 'conn-status ok';
-    } else {
-      throw new Error(data.database || 'unknown error');
-    }
-  } catch (err) {
-    el.textContent = `database unreachable — ${err.message}`;
-    el.className = 'conn-status err';
-  }
+    const r = await fetch('/api' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+    const j = await r.json(); return r.ok ? j : { ok: false, message: j.message || 'Request failed' };
+  } catch { return { ok: false, message: 'Cannot reach the API. Is the backend running?', offline: true }; }
+}
+const statusPill = s => `<span class="pill ${s === 'SUCCESS' || s === 'ACTIVE' || s === 'VERIFIED' ? 'ok' : s === 'FAILED' ? 'fail' : 'warn'}">${esc(s)}</span>`;
+
+async function load() {
+  const [acc, st, tx, au, h] = await Promise.all([api('/accounts'), api('/stats'), api('/transactions'), api('/audit-logs'), api('/health')]);
+  const hb = $('#health');
+  if (h.status === 'ok') { hb.className = 'health ok'; hb.textContent = '● API + database connected'; }
+  else { hb.className = 'health bad'; hb.textContent = '● Backend/database unreachable'; return; }
+  accounts = acc; renderAccounts(); renderStats(st); renderTx(tx); renderAudit(au); fillSelects(st.branches);
+}
+function renderStats(s) {
+  $('#cards').innerHTML = [['Total deposits', inr(s.total)], ['Customers', s.users], ['Accounts', s.accounts], ['Transactions', s.txns], ['Failed attempts', s.failed]]
+    .map(([k, v]) => `<div class="card"><small>${k}</small><b>${v}</b></div>`).join('');
+  const max = Math.max(...s.branches.map(b => b.total_balance), 1);
+  $('#branchBars').innerHTML = s.branches.map(b => `<div class="bar"><div style="display:flex;justify-content:space-between;background:none;height:auto"><span>#${b.balance_rank} ${esc(b.name)}, ${esc(b.city)} <small>(${b.accounts} acc)</small></span><b>${inr(b.total_balance)}</b></div><div><i style="width:${b.total_balance / max * 100}%"></i></div></div>`).join('');
+}
+function renderAccounts() {
+  $('#accRows').innerHTML = accounts.map(a => `<tr data-id="${a.account_id}"><td><b>${esc(a.account_no)}</b></td><td>${esc(a.full_name)}</td><td>${esc(a.branch_name)}, ${esc(a.city)}</td><td>${esc(a.type)}</td><td>${statusPill(a.status)}</td><td class="r">${inr(a.balance)}</td></tr>`).join('');
+}
+function renderTx(tx) {
+  const row = t => `<tr><td>${t.txn_id}</td><td>${t.txn_type}</td><td>${esc(t.from_no || '—')}</td><td>${esc(t.to_no || '—')}</td><td class="r">${inr(t.amount)}</td><td>${statusPill(t.status)}</td><td>${esc(t.initiated_by)}</td><td>${when(t.created_at)}</td></tr>`;
+  $('#txRows').innerHTML = tx.map(row).join('');
+  $('#latest').innerHTML = tx.slice(0, 5).map(t => `<div class="item"><div>${t.txn_type} ${statusPill(t.status)}<small>${esc(t.from_no || 'Cash')} → ${esc(t.to_no || 'Cash')} · ${when(t.created_at)}</small></div><b>${inr(t.amount)}</b></div>`).join('');
+}
+function renderAudit(au) {
+  $('#auRows').innerHTML = au.map(l => `<tr><td>${l.log_id}</td><td>${esc(l.account_no)}</td><td class="r">${inr(l.old_balance)}</td><td class="r">${inr(l.new_balance)}</td><td>${esc(l.changed_by)}</td><td>${when(l.changed_at)}</td></tr>`).join('');
+}
+function fillSelects(branches) {
+  const opts = accounts.filter(a => a.status === 'ACTIVE').map(a => `<option value="${a.account_id}">${esc(a.account_no)} · ${esc(a.full_name)} (${inr(a.balance)})</option>`).join('')
+    + accounts.filter(a => a.status !== 'ACTIVE').map(a => `<option value="${a.account_id}">${esc(a.account_no)} · ${esc(a.full_name)} [FROZEN]</option>`).join('');
+  const keepA = $('#selA').value, keepB = $('#selB').value;
+  $('#selA').innerHTML = opts; $('#selB').innerHTML = opts;
+  if (keepA) $('#selA').value = keepA; if (keepB) $('#selB').value = keepB;
+  if (!$('#branchSel').options.length) $('#branchSel').innerHTML = branches.map(b => `<option value="${b.branch_id}">${esc(b.name)}, ${esc(b.city)}</option>`).join('');
 }
 
-async function loadAccounts() {
-  const body = document.getElementById('accountsBody');
-  const countEl = document.getElementById('accountCount');
-  const countStatEl = document.getElementById('accountCountStat');
-  const fromSel = document.getElementById('fromAccount');
-  const toSel = document.getElementById('toAccount');
-
-  try {
-    const res = await fetch(`${API}/api/accounts`);
-    const accounts = await res.json();
-    if (!res.ok) throw new Error(accounts.error || 'failed to load accounts');
-
-    countEl.textContent = `${accounts.length} account${accounts.length === 1 ? '' : 's'}`;
-    countStatEl.textContent = String(accounts.length);
-
-    body.innerHTML = accounts.length
-      ? accounts.map(a => `
-        <tr>
-          <td class="acct-number">${a.account_number}</td>
-          <td>${a.full_name}</td>
-          <td>${a.account_type}</td>
-          <td>${a.branch_name}</td>
-          <td class="balance">${fmtMoney(a.balance, a.currency)}</td>
-          <td><span class="status-pill ${a.status.toLowerCase()}">${a.status}</span></td>
-        </tr>
-      `).join('')
-      : `<tr><td colspan="6" class="empty">No accounts yet.</td></tr>`;
-
-    const options = accounts
-      .map(a => `<option value="${a.account_id}">${a.account_number} — ${a.full_name} (${fmtMoney(a.balance, a.currency)})</option>`)
-      .join('');
-    fromSel.innerHTML = options;
-    toSel.innerHTML = options;
-    if (accounts.length > 1) toSel.selectedIndex = 1;
-
-    renderBalanceChart(accounts);
-    const totalBalance = accounts.reduce((sum, account) => sum + Number(account.balance || 0), 0);
-    document.getElementById('totalBalanceStat').textContent = fmtMoney(totalBalance, 'USD');
-    document.getElementById('activeAccountsStat').textContent = String(accounts.filter(a => a.status === 'ACTIVE').length);
-  } catch (err) {
-    body.innerHTML = `<tr><td colspan="6" class="empty">Couldn't load accounts — ${err.message}</td></tr>`;
-  }
-}
-
-async function loadUsers() {
-  const list = document.getElementById('customersList');
-  const countEl = document.getElementById('customerCount');
-  const verifiedEl = document.getElementById('verifiedCustomersStat');
-  const searchInput = document.getElementById('customerSearch');
-  const query = (searchInput ? searchInput.value : '').trim();
-
-  try {
-    const res = await fetch(`${API}/api/users${query ? `?search=${encodeURIComponent(query)}` : ''}`);
-    const users = await res.json();
-    if (!res.ok) throw new Error(users.error || 'failed to load customers');
-
-    countEl.textContent = `${users.length} customer${users.length === 1 ? '' : 's'}`;
-    verifiedEl.textContent = String(users.filter(u => u.kyc_status === 'VERIFIED').length);
-
-    list.innerHTML = users.length
-      ? users.map(user => `
-        <li>
-          <button type="button" class="customer-button" data-user-id="${user.user_id}">
-            <div class="customer-top">
-              <span class="customer-name">${user.full_name}</span>
-              <span class="kyc-badge ${slugify(user.kyc_status)}">${user.kyc_status}</span>
-            </div>
-            <div class="customer-meta">${maskEmail(user.email)} · ${maskPhone(user.phone)}</div>
-          </button>
-        </li>
-      `).join('')
-      : '<li class="empty">No customers yet.</li>';
-
-    renderCustomerStatusBreakdown(users);
-    bindCustomerButtons();
-
-    const selected = document.querySelector('.customer-button.active');
-    if (!selected && users.length) {
-      const first = list.querySelector('.customer-button');
-      if (first) {
-        first.classList.add('active');
-        loadCustomerDetail(Number(first.dataset.userId));
-      }
-    }
-  } catch (err) {
-    list.innerHTML = `<li class="empty">Couldn't load customers — ${err.message}</li>`;
-  }
-}
-
-function bindCustomerButtons() {
-  document.querySelectorAll('.customer-button').forEach(button => {
-    button.addEventListener('click', () => {
-      document.querySelectorAll('.customer-button').forEach(el => el.classList.remove('active'));
-      button.classList.add('active');
-      loadCustomerDetail(Number(button.dataset.userId));
-    });
-  });
-}
-
-async function loadCustomerDetail(userId) {
-  const container = document.getElementById('customerProfile');
-  try {
-    const res = await fetch(`${API}/api/users/${userId}`);
-    const user = await res.json();
-    if (!res.ok) throw new Error(user.error || 'failed to load customer profile');
-
-    container.innerHTML = `
-      <div class="profile-header">
-        <div>
-          <h3>${user.full_name}</h3>
-          <div class="customer-meta">Customer ID: ${user.user_id}</div>
-        </div>
-        <span class="kyc-badge ${slugify(user.kyc_status)}">${user.kyc_status}</span>
-      </div>
-      <div class="profile-grid">
-        <div class="profile-field">
-          <label>Email</label>
-          <strong>${maskEmail(user.email)}</strong>
-        </div>
-        <div class="profile-field">
-          <label>Phone</label>
-          <strong>${maskPhone(user.phone)}</strong>
-        </div>
-        <div class="profile-field">
-          <label>National ID</label>
-          <strong>${user.national_id || '—'}</strong>
-        </div>
-        <div class="profile-field">
-          <label>Date of birth</label>
-          <strong>${user.date_of_birth || '—'}</strong>
-        </div>
-        <div class="profile-field">
-          <label>Address</label>
-          <strong>${user.address || '—'}</strong>
-        </div>
-        <div class="profile-field">
-          <label>Created</label>
-          <strong>${fmtTime(user.created_at)}</strong>
-        </div>
-      </div>
-    `;
-  } catch (err) {
-    container.innerHTML = `<div class="empty">Couldn't load secure profile — ${err.message}</div>`;
-  }
-}
-
-function renderBalanceChart(accounts) {
-  const chart = document.getElementById('balanceChart');
-  if (!chart) return;
-
-  const grouped = accounts.reduce((acc, account) => {
-    const key = account.account_type || 'OTHER';
-    acc[key] = (acc[key] || 0) + Number(account.balance || 0);
-    return acc;
-  }, {});
-
-  const entries = Object.entries(grouped);
-  const maxValue = Math.max(...entries.map(([, value]) => value), 1);
-
-  chart.innerHTML = entries.length
-    ? entries.map(([label, value]) => `
-      <div class="balance-bar-wrap">
-        <div class="balance-bar" style="height: ${(value / maxValue) * 120 + 20}px"></div>
-        <div class="balance-bar-label">${label.slice(0, 3)}</div>
-      </div>
-    `).join('')
-    : '<div class="empty">No balance data.</div>';
-}
-
-function renderCustomerStatusBreakdown(users = []) {
-  const container = document.getElementById('customerStatusBreakdown');
-  if (!container) return;
-
-  const counts = { VERIFIED: 0, PENDING: 0, REJECTED: 0 };
-
-  if (!users.length) {
-    container.innerHTML = '<div class="empty">No customer status data.</div>';
-    return;
-  }
-
-  users.forEach(user => {
-    const status = user.kyc_status || 'PENDING';
-    if (status in counts) counts[status] += 1;
-  });
-
-  const total = Math.max(Object.values(counts).reduce((sum, value) => sum + value, 0), 1);
-  container.innerHTML = Object.entries(counts).map(([status, count]) => `
-    <div class="status-row">
-      <div class="status-row-top">
-        <span>${status}</span>
-        <span>${count}</span>
-      </div>
-      <div class="status-bar"><div class="status-fill ${slugify(status)}" style="width: ${(count / total) * 100}%"></div></div>
-    </div>
-  `).join('');
-}
-
-async function loadAuditLog() {
-  const feed = document.getElementById('auditFeed');
-  try {
-    const res = await fetch(`${API}/api/audit-logs?limit=25`);
-    const logs = await res.json();
-    if (!res.ok) throw new Error(logs.error || 'failed to load audit log');
-
-    feed.innerHTML = logs.length
-      ? logs.map(l => `
-        <li>
-          <div class="audit-line">
-            <span class="audit-what">${l.table_name} #${l.record_id} · <span class="field">${l.column_name || l.operation}</span></span>
-            <span class="audit-meta">${fmtTime(l.changed_at)}</span>
-          </div>
-          <div class="audit-change">${l.old_value ?? '—'} → ${l.new_value ?? '—'} &nbsp;·&nbsp; by ${l.changed_by}</div>
-        </li>
-      `).join('')
-      : `<li class="empty">No activity logged yet.</li>`;
-  } catch (err) {
-    feed.innerHTML = `<li class="empty">Couldn't load activity — ${err.message}</li>`;
-  }
-}
-
-async function refreshAll() {
-  await Promise.all([loadAccounts(), loadUsers(), loadAuditLog()]);
-}
-
-document.getElementById('transferForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('submitBtn');
-  const statusEl = document.getElementById('transferStatus');
-
-  const payload = {
-    from_account_id: Number(document.getElementById('fromAccount').value),
-    to_account_id: Number(document.getElementById('toAccount').value),
-    amount: Number(document.getElementById('amount').value),
-    reference_no: document.getElementById('reference').value.trim() || `WEB-${Date.now()}`,
-    initiated_by: document.getElementById('initiatedBy').value.trim() || 'dashboard_user',
-  };
-
-  if (payload.from_account_id === payload.to_account_id) {
-    setStatusText(statusEl, 'Source and destination accounts must be different.', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  setStatusText(statusEl, 'Sending…', '');
-
-  try {
-    const res = await fetch(`${API}/api/transfer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      setStatusText(statusEl, data.result, 'success');
-      document.getElementById('amount').value = '';
-      document.getElementById('reference').value = '';
-      await refreshAll();
-    } else {
-      setStatusText(statusEl, data.result || data.error || 'Transfer failed.', 'error');
-    }
-  } catch (err) {
-    setStatusText(statusEl, `Network error — ${err.message}`, 'error');
-  } finally {
-    btn.disabled = false;
-  }
+// Navigation: every click gives feedback
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button, .page').forEach(e => e.classList.remove('on')); b.classList.add('on'); $('#' + b.dataset.page).classList.add('on');
+  toast('Opened ' + b.textContent.replace(/^\S+\s/, ''));
 });
-
-document.getElementById('customerForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const statusEl = document.getElementById('customerStatus');
-  const submitBtn = document.getElementById('customerSubmitBtn');
-
-  const payload = {
-    full_name: document.getElementById('customerName').value.trim(),
-    date_of_birth: document.getElementById('customerDob').value,
-    national_id: document.getElementById('customerNationalId').value.trim(),
-    email: document.getElementById('customerEmail').value.trim(),
-    phone: document.getElementById('customerPhone').value.trim(),
-    address: document.getElementById('customerAddress').value.trim(),
-  };
-
-  submitBtn.disabled = true;
-  setStatusText(statusEl, 'Creating customer…', '');
-
-  try {
-    const res = await fetch(`${API}/api/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Customer creation failed');
-    }
-
-    setStatusText(statusEl, `Customer created successfully — ID ${data.user_id}`, 'success');
-    form.reset();
-    await refreshAll();
-  } catch (err) {
-    setStatusText(statusEl, err.message, 'error');
-  } finally {
-    submitBtn.disabled = false;
-  }
+// Transaction tabs
+$$('#tabs button').forEach(b => b.onclick = () => {
+  $$('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); txType = b.dataset.t;
+  $('#toWrap').hidden = txType !== 'transfer'; $('#fromLbl').textContent = txType === 'transfer' ? 'From account' : 'Account';
+  $('#txBtn').textContent = { deposit: 'Deposit money', withdraw: 'Withdraw money', transfer: 'Transfer money' }[txType];
+  toast('Switched to ' + txType);
 });
+$('#txForm').onsubmit = async e => {
+  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); const btn = $('#txBtn'); btn.disabled = true;
+  const body = txType === 'transfer' ? { from_account: f.account, to_account: f.to_account, amount: f.amount, initiated_by: f.initiated_by } : f;
+  const r = await api('/' + txType, body); btn.disabled = false;
+  toast(r.message, r.ok ? 'success' : 'error'); if (r.ok) e.target.amount.value = ''; load();
+};
+$('#newUser').onsubmit = async e => {
+  e.preventDefault(); const r = await api('/users', Object.fromEntries(new FormData(e.target)));
+  toast(r.message, r.ok ? 'success' : 'error'); if (r.ok) { e.target.reset(); load(); }
+};
+// Account details modal
+$('#accRows').onclick = e => {
+  const tr = e.target.closest('tr'); if (!tr) return; const a = accounts.find(x => x.account_id == tr.dataset.id);
+  $('#mBody').innerHTML = `<h2>${esc(a.full_name)}</h2><p class="sub">${esc(a.account_no)} · ${esc(a.type)} ${statusPill(a.status)}</p><h1>${inr(a.balance)}</h1>
+  <div class="kv"><span>Email</span><span>${esc(a.email)}</span><span>Phone</span><span>${esc(a.phone)}</span><span>Address</span><span>${esc(a.address || '—')}</span>
+  <span>Date of birth</span><span>${esc((a.dob || '—').toString().slice(0, 10))}</span><span>PAN</span><span>${esc(a.pan || '—')}</span><span>KYC</span><span>${statusPill(a.kyc_status)}</span>
+  <span>Branch</span><span>${esc(a.branch_name)} (${esc(a.ifsc)})</span><span>Opened on</span><span>${esc(String(a.opened_on).slice(0, 10))}</span></div>`;
+  $('#modal').hidden = false; toast('Showing details for ' + a.full_name);
+};
+$('#mx').onclick = () => $('#modal').hidden = true; $('#modal').onclick = e => { if (e.target.id === 'modal') e.target.hidden = true; };
 
-checkHealth();
-refreshAll();
-const customerSearch = document.getElementById('customerSearch');
-if (customerSearch) {
-  customerSearch.addEventListener('input', () => loadUsers());
-}
-setInterval(refreshAll, 8000); // keep the ledger live without a manual refresh
+load().then(() => toast('Dashboard loaded. Try a deposit under Transactions.', 'success'));
+setInterval(load, 8000);
