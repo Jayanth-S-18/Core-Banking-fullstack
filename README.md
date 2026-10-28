@@ -1,4 +1,4 @@
-# 🏦 Core Banking System: Full-Stack Learning Project
+# Core Banking System: Full-Stack Learning Project
 
 A complete mini core-banking system: **MySQL/MariaDB** (all the money rules) + **Node.js/Express** REST API + a **dashboard frontend** that explains itself and shows a pop-up message for every click and action.
 
@@ -48,6 +48,26 @@ core-banking/
 ├── backend/            Express API (server.js, db.js)
 └── frontend/           index.html, styles.css, app.js (no build step)
 ```
+
+## Run with Docker
+
+Requires Docker with Compose v2. No Node or MySQL install needed.
+
+```bash
+cp .env.example .env        # optional: edit APP_PORT and passwords
+docker compose up --build
+```
+Open http://localhost:4000 (or whatever `APP_PORT` is set to).
+
+**Change the port:** set `APP_PORT=8080` in `.env`, or run `APP_PORT=8080 docker compose up`. Only the host side of the mapping changes; the container keeps listening on 4000.
+
+Useful commands:
+```bash
+docker compose down        # stop (data is kept)
+docker compose down -v     # stop and delete the database volume (re-seeds on next start)
+docker compose logs -f app # follow API logs
+```
+The SQL files in `sql/` run automatically the first time the database volume is created.
 
 ## 6. Run it (terminal commands)
 **Requirements:** Node.js 18+ and MySQL 8+ or MariaDB 10.5+.

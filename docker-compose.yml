@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: core_banking
+      MYSQL_USER: ${DB_USER:-bankapp}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-bankpass}
+    volumes:
+      - dbdata:/var/lib/mysql
+      # Runs once, on first start, in filename order (01, 02, 03)
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-bankapp}
+      DB_PASSWORD: ${DB_PASSWORD:-bankpass}
+      DB_NAME: core_banking
+      PORT: 4000
+    ports:
+      # host port : container port. Change APP_PORT to use a different host port.
+      - "${APP_PORT:-4000}:4000"
+
+volumes:
+  dbdata:

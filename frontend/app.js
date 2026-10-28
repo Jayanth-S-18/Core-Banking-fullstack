@@ -6,7 +6,7 @@ let accounts = [], txType = 'deposit';
 
 function toast(msg, type = 'info') {
   const t = document.createElement('div'); t.className = 'toast ' + type;
-  t.textContent = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+  t.textContent = msg;
   $('#toasts').append(t); setTimeout(() => t.remove(), 4500);
 }
 async function api(path, body) {
@@ -53,14 +53,13 @@ function fillSelects(branches) {
 // Navigation: every click gives feedback
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button, .page').forEach(e => e.classList.remove('on')); b.classList.add('on'); $('#' + b.dataset.page).classList.add('on');
-  toast('Opened ' + b.textContent.replace(/^\S+\s/, ''));
 });
 // Transaction tabs
 $$('#tabs button').forEach(b => b.onclick = () => {
   $$('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); txType = b.dataset.t;
   $('#toWrap').hidden = txType !== 'transfer'; $('#fromLbl').textContent = txType === 'transfer' ? 'From account' : 'Account';
   $('#txBtn').textContent = { deposit: 'Deposit money', withdraw: 'Withdraw money', transfer: 'Transfer money' }[txType];
-  toast('Switched to ' + txType);
+ 
 });
 $('#txForm').onsubmit = async e => {
   e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); const btn = $('#txBtn'); btn.disabled = true;
@@ -79,9 +78,9 @@ $('#accRows').onclick = e => {
   <div class="kv"><span>Email</span><span>${esc(a.email)}</span><span>Phone</span><span>${esc(a.phone)}</span><span>Address</span><span>${esc(a.address || '—')}</span>
   <span>Date of birth</span><span>${esc((a.dob || '—').toString().slice(0, 10))}</span><span>PAN</span><span>${esc(a.pan || '—')}</span><span>KYC</span><span>${statusPill(a.kyc_status)}</span>
   <span>Branch</span><span>${esc(a.branch_name)} (${esc(a.ifsc)})</span><span>Opened on</span><span>${esc(String(a.opened_on).slice(0, 10))}</span></div>`;
-  $('#modal').hidden = false; toast('Showing details for ' + a.full_name);
+  $('#modal').hidden = false;
 };
 $('#mx').onclick = () => $('#modal').hidden = true; $('#modal').onclick = e => { if (e.target.id === 'modal') e.target.hidden = true; };
 
-load().then(() => toast('Dashboard loaded. Try a deposit under Transactions.', 'success'));
+load();
 setInterval(load, 8000);

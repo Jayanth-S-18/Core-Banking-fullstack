@@ -3,15 +3,23 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Core Banking Dashboard</title><link rel="stylesheet" href="styles.css">
 </head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-overview" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></symbol>
+<symbol id="i-about" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></symbol>
+<symbol id="i-accounts" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 0 1 0 6.4M21.5 20c0-2.6-1.4-4.5-3.5-5.4"/></symbol>
+<symbol id="i-transact" viewBox="0 0 24 24"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></symbol>
+<symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4h4M12 8v4l3 2"/></symbol>
+<symbol id="i-audit" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.100 7.500-9.500V6L12 3z"/><path d="m9 12 2.200 2.200L15.500 10"/></symbol>
+</defs></svg>
 <aside>
-  <div class="brand">🏦 <b>CoreBank</b><small>Learning Edition</small></div>
+  <div class="brand"><span class="mark">CB</span><div><b>CoreBank</b><small>Learning Edition</small></div></div>
   <nav>
-    <button data-page="overview" class="on">📊 Overview</button>
-    <button data-page="about">📘 What is this?</button>
-    <button data-page="accounts">👥 Accounts</button>
-    <button data-page="transact">💸 Transactions</button>
-    <button data-page="history">🧾 History</button>
-    <button data-page="audit">🔍 Audit trail</button>
+    <button data-page="overview" class="on"><svg class="i"><use href="#i-overview"/></svg><span>Overview</span></button>
+    <button data-page="about"><svg class="i"><use href="#i-about"/></svg><span>What is this?</span></button>
+    <button data-page="accounts"><svg class="i"><use href="#i-accounts"/></svg><span>Accounts</span></button>
+    <button data-page="transact"><svg class="i"><use href="#i-transact"/></svg><span>Transactions</span></button>
+    <button data-page="history"><svg class="i"><use href="#i-history"/></svg><span>History</span></button>
+    <button data-page="audit"><svg class="i"><use href="#i-audit"/></svg><span>Audit trail</span></button>
   </nav>
   <div id="health" class="health">Checking server…</div>
 </aside>
@@ -29,15 +37,15 @@
   <h1>What is this project?</h1>
   <p class="sub">A mini <b>core banking system</b>: the engine that keeps customer accounts, balances and transactions correct.</p>
   <div class="grid2">
-    <div class="panel"><h3>🏦 What is core banking?</h3><p>“Core banking” is the central software a bank runs on. Every ATM withdrawal, UPI payment, net-banking transfer or branch deposit ends up as an operation on this core: <i>check the balance, move the money, record it</i>. Real systems (Finacle, Flexcube, TCS BaNCS) work on the same ideas as this project.</p></div>
-    <div class="panel"><h3>🎯 Why does it matter?</h3><p>Money must <b>never</b> be created, lost or double-spent, even if the server crashes mid-transfer or two people pay at the same moment. This project shows how a database guarantees that using transactions, locks, constraints and triggers.</p></div>
-    <div class="panel"><h3>🌍 Where is it used?</h3><p>Banks, NBFCs, credit unions, wallets (Paytm, PhonePe), payment gateways, brokerages and any app holding balances: gaming credits, ride wallets, loyalty points.</p></div>
-    <div class="panel"><h3>🧪 Try it in 60 seconds</h3><ol><li>Go to <b>Transactions</b>, move ₹5,000 from CB1001002 to CB1002001.</li><li>Open <b>Audit trail</b>: two balance rows were logged by a trigger.</li><li>Try withdrawing ₹10,00,000: the database rejects it.</li><li>Try the FROZEN account CB1006001: rejected too.</li></ol></div>
+    <div class="panel"><h3>What is core banking?</h3><p>“Core banking” is the central software a bank runs on. Every ATM withdrawal, UPI payment, net-banking transfer or branch deposit ends up as an operation on this core: <i>check the balance, move the money, record it</i>. Real systems (Finacle, Flexcube, TCS BaNCS) work on the same ideas as this project.</p></div>
+    <div class="panel"><h3>Why does it matter?</h3><p>Money must <b>never</b> be created, lost or double-spent, even if the server crashes mid-transfer or two people pay at the same moment. This project shows how a database guarantees that using transactions, locks, constraints and triggers.</p></div>
+    <div class="panel"><h3>Where is it used?</h3><p>Banks, NBFCs, credit unions, wallets (Paytm, PhonePe), payment gateways, brokerages and any app holding balances: gaming credits, ride wallets, loyalty points.</p></div>
+    <div class="panel"><h3>Try it in 60 seconds</h3><ol><li>Go to <b>Transactions</b>, move ₹5,000 from CB1001002 to CB1002001.</li><li>Open <b>Audit trail</b>: two balance rows were logged by a trigger.</li><li>Try withdrawing ₹10,00,000: the database rejects it.</li><li>Try the FROZEN account CB1006001: rejected too.</li></ol></div>
   </div>
-  <div class="panel"><h3>⚙️ How a transfer flows</h3>
+  <div class="panel"><h3>How a transfer flows</h3>
     <div class="flow"><span>Browser form</span>→<span>Express API<br><small>POST /api/transfer</small></span>→<span>sp_transfer_funds<br><small>stored procedure</small></span>→<span>Accounts updated<br><small>row locks + COMMIT</small></span>→<span>Trigger writes<br><small>Audit_Logs</small></span></div>
     <p class="sub">The API does <b>no</b> money maths. All rules live in the database, so no client can bypass them.</p></div>
-  <div class="panel"><h3>🗄️ SQL concepts demonstrated</h3>
+  <div class="panel"><h3>SQL concepts demonstrated</h3>
     <div class="tags"><span>PRIMARY / FOREIGN KEYS</span><span>CHECK (balance ≥ 0)</span><span>ACID transactions</span><span>SELECT … FOR UPDATE</span><span>Stored procedures</span><span>Triggers</span><span>Views</span><span>JOINs</span><span>Window function RANK()</span><span>Indexes</span><span>ENUM types</span></div>
     <p><b>ACID</b>: <b>A</b>tomic (all or nothing) · <b>C</b>onsistent (rules always hold) · <b>I</b>solated (parallel users don’t clash) · <b>D</b>urable (committed data survives crashes).</p></div>
 </section>
@@ -45,7 +53,7 @@
 <section id="accounts" class="page">
   <h1>Customers &amp; Accounts</h1><p class="sub">Click any row to see full customer details.</p>
   <div class="panel tbl"><table><thead><tr><th>Account</th><th>Customer</th><th>Branch</th><th>Type</th><th>Status</th><th class="r">Balance</th></tr></thead><tbody id="accRows"></tbody></table></div>
-  <div class="panel"><h3>➕ Onboard new customer</h3>
+  <div class="panel"><h3>Onboard new customer</h3>
     <form id="newUser" class="form row">
       <input name="full_name" placeholder="Full name" required><input name="email" type="email" placeholder="Email" required>
       <input name="phone" placeholder="Phone" required><select name="branch_id" id="branchSel"></select>
@@ -73,7 +81,7 @@
   <div class="panel tbl"><table><thead><tr><th>#</th><th>Account</th><th class="r">Old</th><th class="r">New</th><th>Changed by</th><th>When</th></tr></thead><tbody id="auRows"></tbody></table></div></section>
 </main>
 
-<div id="modal" class="modal" hidden><div class="box"><button class="x" id="mx">✕</button><div id="mBody"></div></div></div>
+<div id="modal" class="modal" hidden><div class="box"><button class="x" id="mx" aria-label="Close">&times;</button><div id="mBody"></div></div></div>
 <div id="toasts"></div>
 <script src="app.js"></script>
 </body></html>
